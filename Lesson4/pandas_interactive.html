@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 4 — Pandas</title>
+  <style>
+    :root{
+      --bg:#fafafa; --text:#222; --muted:#666; --line:#ddd; --soft:#f7f7f7;
+      --note:#fff7e6; --note-line:#ffe2a8; --ok:#0a7; --bad:#c33; --accent:#111;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Arial, Helvetica, sans-serif}
+    .wrap{max-width:1120px;margin:0 auto;padding:24px}
+    h1,h2,h3{margin:0 0 10px}
+    h1{font-size:30px}
+    h2{font-size:24px}
+    h3{font-size:18px}
+    .muted{color:var(--muted)}
+    .tabs,.subtabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+    .tab,.subtab{
+      border:1px solid var(--line); border-radius:999px; padding:8px 14px; cursor:pointer;
+      background:white; user-select:none;
+    }
+    .tab.active,.subtab.active{background:var(--accent);color:white;border-color:var(--accent)}
+    .card{border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;background:white}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    @media (max-width:920px){.row,.grid3{grid-template-columns:1fr}}
+    label{display:block;font-weight:600;margin:8px 0 6px}
+    input,select,button,textarea{
+      width:100%; padding:10px; border-radius:10px; border:1px solid #ccc; font-size:14px;
+      background:white;
+    }
+    button{cursor:pointer}
+    button.secondary{background:#fff}
+    pre{background:var(--soft);padding:10px;border-radius:12px;overflow:auto;white-space:pre-wrap}
+    code{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;background:#fff}
+    .ok{color:var(--ok);font-weight:700}
+    .bad{color:var(--bad);font-weight:700}
+    .note{background:var(--note);border:1px solid var(--note-line);padding:10px;border-radius:12px}
+    .small{font-size:12px}
+    .hr{height:1px;background:#eee;margin:12px 0}
+    ul{margin:8px 0 8px 18px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lesson 4 — Pandas</h1>
+  <div class="muted">Формат как в предыдущем HTML: теория → “потрогать руками” → самопроверка. Темы взяты из занятия по pandas: Series, DataFrame, отображение данных, первичный анализ, фильтрация, loc / iloc, сортировки.</div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="theory">Теория</div>
+    <div class="tab" data-tab="play">Поиграть</div>
+    <div class="tab" data-tab="quiz">Самопроверка</div>
+  </div>
+
+  <section id="theory" class="panel">
+    <div class="card">
+      <h2>Темы занятия</h2>
+      <div class="note">
+        <b>Цель:</b> научиться читать таблицы в pandas, смотреть структуру данных, делать фильтрацию, брать нужные строки и столбцы и сортировать результат.
+      </div>
+      <div class="subtabs">
+        <div class="subtab active" data-sub="t_intro">Pandas</div>
+        <div class="subtab" data-sub="t_series">Series</div>
+        <div class="subtab" data-sub="t_df">DataFrame</div>
+        <div class="subtab" data-sub="t_view">Отображение</div>
+        <div class="subtab" data-sub="t_analysis">Первичный анализ</div>
+        <div class="subtab" data-sub="t_filter">Фильтрация</div>
+        <div class="subtab" data-sub="t_index">Индексация</div>
+        <div class="subtab" data-sub="t_sort">Сортировки</div>
+      </div>
+    </div>
+
+    <div id="t_intro" class="subpanel">
+      <div class="card">
+        <h2>Библиотека pandas</h2>
+        <p>Pandas — библиотека Python для обработки и анализа табличных данных. По духу она напоминает Excel или Google Sheets, но даёт больше гибкости и позволяет работать кодом.</p>
+        <ul>
+          <li>основные структуры: <code>Series</code> и <code>DataFrame</code>;</li>
+          <li>данные можно читать из CSV и других файлов;</li>
+          <li>типичные задачи: просмотр, фильтрация, выбор строк и столбцов, сортировка.</li>
+        </ul>
+        <pre><code>import pandas as pd</code></pre>
+      </div>
+    </div>
+
+    <div id="t_series" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Series</h2>
+        <p><code>Series</code> — это одномерная структура данных с индексами. Слева индекс, справа значение.</p>
+        <pre><code>a = pd.Series([4, 7, 6, 3, 9],
+              index=['one', 'two', 'three', 'four', 'five'])</code></pre>
+        <div class="note">Можно думать о Series как об одном столбце таблицы.</div>
+      </div>
+    </div>
+
+    <div id="t_df" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>DataFrame</h2>
+        <p><code>DataFrame</code> — табличная структура: строки + столбцы. В разных столбцах могут быть разные типы данных.</p>
+        <pre><code>df = pd.DataFrame({
+    'Age': [46, 37, 44, 42, 42],
+    'Country': ['Spain', 'Spain', 'Germany', 'Germany', 'France'],
+    'Gender': ['Female', 'Female', 'Male', 'Male', 'Male']
+})</code></pre>
+        <div class="note">Отдельный столбец DataFrame — это Series.</div>
+      </div>
+    </div>
+
+    <div id="t_view" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Отображение данных</h2>
+        <ul>
+          <li><code>pd.read_csv(...)</code> — чтение CSV;</li>
+          <li><code>df.head()</code> — первые строки таблицы;</li>
+          <li><code>df.shape</code> — размер таблицы: (строки, столбцы).</li>
+        </ul>
+        <pre><code>df = pd.read_csv('./Churn_Modelling.csv')
+df.head()
+df.shape</code></pre>
+      </div>
+    </div>
+
+    <div id="t_analysis" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Первичный анализ данных</h2>
+        <ul>
+          <li><code>df.info()</code> — общая информация о таблице и типах столбцов;</li>
+          <li><code>df.describe()</code> — статистика по числовым столбцам;</li>
+          <li><code>df.describe(include='object')</code> — описание категориальных столбцов;</li>
+          <li><code>value_counts()</code> — частоты значений в столбце.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="t_filter" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Фильтрация</h2>
+        <p>Фильтрация в pandas строится на булевых масках.</p>
+        <pre><code>df['Gender'] == 'Male'
+df[df['Gender'] == 'Male']</code></pre>
+        <ul>
+          <li><code>&amp;</code> — логическое И;</li>
+          <li><code>|</code> — логическое ИЛИ;</li>
+          <li><code>~</code> — логическое НЕ;</li>
+          <li><code>isin(...)</code> — проверка вхождения в список значений.</li>
+        </ul>
+        <div class="note">Сложные условия в pandas удобно писать в круглых скобках.</div>
+      </div>
+    </div>
+
+    <div id="t_index" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Индексация: loc и iloc</h2>
+        <ul>
+          <li><code>loc</code> берёт данные по <b>именам</b> строк и столбцов;</li>
+          <li><code>iloc</code> берёт данные по <b>позициям</b> строк и столбцов.</li>
+        </ul>
+        <pre><code>df_small.loc[1]
+df_small.loc[[1, 4, 5], ['Gender', 'Age']]
+
+df_small.iloc[[0, 1, 2]]
+df_small.iloc[0, [0, 2]]</code></pre>
+      </div>
+    </div>
+
+    <div id="t_sort" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Сортировки</h2>
+        <ul>
+          <li><code>sort_values('Age')</code> — по возрастанию;</li>
+          <li><code>sort_values('Age', ascending=False)</code> — по убыванию;</li>
+          <li>можно сортировать по нескольким столбцам сразу.</li>
+        </ul>
+        <pre><code>df.sort_values('Age')
+df.sort_values('Age', ascending=False)
+df.sort_values(['Age', 'Tenure'], ascending=[True, False])</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="play" class="panel" style="display:none;">
+    <div class="card">
+      <h2>Поиграть с pandas-логикой</h2>
+      <div class="subtabs">
+        <div class="subtab active" data-sub="p_series">Series</div>
+        <div class="subtab" data-sub="p_df">DataFrame</div>
+        <div class="subtab" data-sub="p_view">Просмотр</div>
+        <div class="subtab" data-sub="p_filter">Фильтрация</div>
+        <div class="subtab" data-sub="p_index">loc / iloc</div>
+        <div class="subtab" data-sub="p_sort">Сортировка</div>
+      </div>
+    </div>
+
+    <div id="p_series" class="subpanel">
+      <div class="row">
+        <div class="card">
+          <h3>1) Создай Series из списка</h3>
+          <label>Список чисел через запятую</label>
+          <input id="series_nums" value="4, 7, 6, 3, 9" />
+          <button id="btn_series_make">Показать как будет выглядеть</button>
+          <div style="margin-top:12px"><b>Результат:</b> <pre id="series_out">—</pre></div>
+        </div>
+        <div class="card">
+          <h3>2) Series с индексами</h3>
+          <label>Индексы через запятую</label>
+          <input id="series_idx" value="one, two, three" />
+          <label>Значения через запятую</label>
+          <input id="series_vals" value="10, 20, 30" />
+          <button id="btn_series_indexed">Собрать</button>
+          <div style="margin-top:12px"><b>Результат:</b> <pre id="series_indexed_out">—</pre></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_df" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Сколько строк в таблице?</h3>
+          <div class="muted">Условная таблица:</div>
+          <pre><code>Age   Country   Gender
+46    Spain     Female
+37    Spain     Female
+44    Germany   Male
+42    Germany   Male
+42    France    Male</code></pre>
+          <button id="btn_df_rows">Посчитать строки</button>
+          <div style="margin-top:12px"><b>Ответ:</b> <span id="df_rows_out" class="pill">—</span></div>
+        </div>
+        <div class="card">
+          <h3>2) Что такое столбец DataFrame?</h3>
+          <label>Выберите вариант</label>
+          <select id="df_col_sel">
+            <option value="">— выбрать —</option>
+            <option value="table">Отдельная таблица из файлов</option>
+            <option value="series">Объект Series</option>
+            <option value="function">Функция сортировки</option>
+          </select>
+          <button id="btn_df_col">Проверить</button>
+          <div style="margin-top:12px"><b>Результат:</b> <span id="df_col_out" class="pill">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_view" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Что покажет head()?</h3>
+          <label>Сколько первых строк показать</label>
+          <input id="head_n" value="5" />
+          <button id="btn_head">Объяснить</button>
+          <div style="margin-top:12px"><pre id="head_out">—</pre></div>
+        </div>
+        <div class="card">
+          <h3>2) shape таблицы</h3>
+          <label>Строк</label>
+          <input id="shape_rows" value="10000" />
+          <label>Столбцов</label>
+          <input id="shape_cols" value="14" />
+          <button id="btn_shape">Собрать shape</button>
+          <div style="margin-top:12px"><b>shape:</b> <span id="shape_out" class="pill">—</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>3) Что для чего?</h3>
+        <div class="grid3">
+          <div><code>df.head()</code><br><span class="small muted">первые строки</span></div>
+          <div><code>df.info()</code><br><span class="small muted">типы и общая информация</span></div>
+          <div><code>df.describe()</code><br><span class="small muted">статистика по числовым столбцам</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_filter" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Собери условие</h3>
+          <div class="muted">Нужно: только женщины и только с количеством продуктов ≥ 3</div>
+          <label>Пол</label>
+          <select id="f_gender"><option>Female</option><option>Male</option></select>
+          <label>Минимум продуктов</label>
+          <input id="f_prod" value="3" />
+          <button id="btn_filter_and">Показать код</button>
+          <pre id="filter_and_out">—</pre>
+        </div>
+        <div class="card">
+          <h3>2) NOT / isin</h3>
+          <div class="muted">Исключить France и Germany</div>
+          <button id="btn_filter_not">Показать пример</button>
+          <pre id="filter_not_out">—</pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_index" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) loc или iloc?</h3>
+          <div class="muted">Нужно обратиться к строке с индексом 1</div>
+          <button id="btn_loc_pick">Показать ответ</button>
+          <pre id="loc_pick_out">—</pre>
+        </div>
+        <div class="card">
+          <h3>2) loc или iloc?</h3>
+          <div class="muted">Нужно взять первую строку по позиции</div>
+          <button id="btn_iloc_pick">Показать ответ</button>
+          <pre id="iloc_pick_out">—</pre>
+        </div>
+      </div>
+      <div class="card">
+        <h3>3) Выбор строки и столбцов</h3>
+        <button id="btn_loc_cols">Показать пример loc</button>
+        <button id="btn_iloc_cols" class="secondary" style="margin-top:8px">Показать пример iloc</button>
+        <pre id="index_cols_out">—</pre>
+      </div>
+    </div>
+
+    <div id="p_sort" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Сортировка по одному столбцу</h3>
+          <label>Столбец</label>
+          <input id="sort_col" value="Age" />
+          <label>Порядок</label>
+          <select id="sort_ord"><option value="asc">по возрастанию</option><option value="desc">по убыванию</option></select>
+          <button id="btn_sort_one">Показать код</button>
+          <pre id="sort_one_out">—</pre>
+        </div>
+        <div class="card">
+          <h3>2) Сортировка по двум столбцам</h3>
+          <button id="btn_sort_two">Показать пример</button>
+          <pre id="sort_two_out">—</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quiz" class="panel" style="display:none;">
+    <div class="card">
+      <h2>Самопроверка: больше тестов</h2>
+      <div class="muted">Ответы автоматически перемешиваются, поэтому правильный вариант не «зашит» в одну и ту же букву.</div>
+      <div class="subtabs">
+        <div class="subtab active" data-sub="q_basic">База</div>
+        <div class="subtab" data-sub="q_view">Просмотр и анализ</div>
+        <div class="subtab" data-sub="q_filter">Фильтрация</div>
+        <div class="subtab" data-sub="q_index">loc / iloc</div>
+        <div class="subtab" data-sub="q_sort">Сортировки</div>
+        <div class="subtab" data-sub="q_mix">Смешанный тест</div>
+      </div>
+      <div class="hr"></div>
+      <div id="quizBox"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <button id="btnCheck">Проверить</button>
+        <button id="btnNext" class="secondary">Следующий вопрос</button>
+        <button id="btnReset" class="secondary">Сбросить банк</button>
+      </div>
+      <div style="margin-top:10px;" class="muted">Счёт: <span id="score">0/0</span></div>
+      <div id="feedback" style="margin-top:12px;"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // ========= base tabs =========
+  document.querySelectorAll('.tabs .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+      document.getElementById(tab.dataset.tab).style.display = '';
+    });
+  });
+
+  function wireSubtabs(panelId){
+    const panel = document.getElementById(panelId);
+    const subtabs = panel.querySelectorAll('.subtab');
+    const subpanels = panel.querySelectorAll('.subpanel');
+    subtabs.forEach(st => {
+      st.addEventListener('click', () => {
+        subtabs.forEach(x => x.classList.remove('active'));
+        st.classList.add('active');
+        subpanels.forEach(sp => sp.style.display = 'none');
+        const target = panel.querySelector('#' + st.dataset.sub);
+        if (target) target.style.display = '';
+      });
+    });
+  }
+  wireSubtabs('theory');
+  wireSubtabs('play');
+
+  // ========= play =========
+  function parseCSVNumbers(s){
+    return s.split(',').map(x => x.trim()).filter(Boolean).map(Number).filter(x => !Number.isNaN(x));
+  }
+  function parseCSVStrings(s){
+    return s.split(',').map(x => x.trim()).filter(Boolean);
+  }
+
+  document.getElementById('btn_series_make').addEventListener('click', () => {
+    const nums = parseCSVNumbers(document.getElementById('series_nums').value);
+    if (!nums.length){ document.getElementById('series_out').textContent = 'Введите хотя бы одно число'; return; }
+    document.getElementById('series_out').textContent = nums.map((v,i)=>`${i}    ${v}`).join('\n') + '\ndtype: int64';
+  });
+
+  document.getElementById('btn_series_indexed').addEventListener('click', () => {
+    const idx = parseCSVStrings(document.getElementById('series_idx').value);
+    const vals = parseCSVStrings(document.getElementById('series_vals').value);
+    if (!idx.length || !vals.length || idx.length !== vals.length){
+      document.getElementById('series_indexed_out').textContent = 'Нужно одинаковое число индексов и значений';
+      return;
+    }
+    document.getElementById('series_indexed_out').textContent = idx.map((k,i)=>`${k}    ${vals[i]}`).join('\n') + '\ndtype: object';
+  });
+
+  document.getElementById('btn_df_rows').addEventListener('click', () => {
+    document.getElementById('df_rows_out').textContent = '5';
+  });
+
+  document.getElementById('btn_df_col').addEventListener('click', () => {
+    const v = document.getElementById('df_col_sel').value;
+    document.getElementById('df_col_out').textContent = v === 'series' ? 'Верно: столбец DataFrame — это Series' : 'Неверно';
+  });
+
+  document.getElementById('btn_head').addEventListener('click', () => {
+    const n = Number.parseInt(document.getElementById('head_n').value, 10);
+    document.getElementById('head_out').textContent = Number.isNaN(n) || n <= 0
+      ? 'Введите положительное число'
+      : `df.head(${n}) покажет первые ${n} строк таблицы.`;
+  });
+
+  document.getElementById('btn_shape').addEventListener('click', () => {
+    const r = Number.parseInt(document.getElementById('shape_rows').value, 10);
+    const c = Number.parseInt(document.getElementById('shape_cols').value, 10);
+    document.getElementById('shape_out').textContent = (Number.isNaN(r) || Number.isNaN(c)) ? 'ошибка' : `(${r}, ${c})`;
+  });
+
+  document.getElementById('btn_filter_and').addEventListener('click', () => {
+    const g = document.getElementById('f_gender').value;
+    const p = document.getElementById('f_prod').value.trim() || '3';
+    document.getElementById('filter_and_out').textContent = `df[(df['Gender'] == '${g}') & (df['NumOfProducts'] >= ${p})]`;
+  });
+
+  document.getElementById('btn_filter_not').addEventListener('click', () => {
+    document.getElementById('filter_not_out').textContent = "df[~(df['Geography'].isin(['France', 'Germany']))]";
+  });
+
+  document.getElementById('btn_loc_pick').addEventListener('click', () => {
+    document.getElementById('loc_pick_out').textContent = 'По имени индекса: df_small.loc[1]';
+  });
+
+  document.getElementById('btn_iloc_pick').addEventListener('click', () => {
+    document.getElementById('iloc_pick_out').textContent = 'По позиции: df_small.iloc[0]';
+  });
+
+  document.getElementById('btn_loc_cols').addEventListener('click', () => {
+    document.getElementById('index_cols_out').textContent = "df_small.loc[[1, 4, 5], ['Gender', 'Age']]";
+  });
+
+  document.getElementById('btn_iloc_cols').addEventListener('click', () => {
+    document.getElementById('index_cols_out').textContent = 'df_small.iloc[0, [0, 2]]';
+  });
+
+  document.getElementById('btn_sort_one').addEventListener('click', () => {
+    const col = document.getElementById('sort_col').value.trim() || 'Age';
+    const ord = document.getElementById('sort_ord').value;
+    document.getElementById('sort_one_out').textContent = ord === 'asc'
+      ? `df.sort_values('${col}')`
+      : `df.sort_values('${col}', ascending=False)`;
+  });
+
+  document.getElementById('btn_sort_two').addEventListener('click', () => {
+    document.getElementById('sort_two_out').textContent = "df.sort_values(['Age', 'Tenure'], ascending=[True, False])";
+  });
+
+  // ========= quiz =========
+  const bank_basic = [
+    {q:"Что из этого является одной из двух основных структур данных pandas?", options:["Series","Tuple","Set","Generator"], correct:0, explain:"В занятии выделяются две основные структуры: Series и DataFrame."},
+    {q:"Как лучше всего описать Series?", options:["Одномерная структура с индексами","Файл CSV","Список без индексов","Функция сортировки"], correct:0, explain:"Series — это одномерная структура данных с индексами."},
+    {q:"Что такое DataFrame?", options:["Табличная структура данных","Только числовой массив","Один столбец таблицы","Словарь без строк"], correct:0, explain:"DataFrame — это таблица со строками и столбцами."},
+    {q:"Что обычно представляет собой один столбец DataFrame?", options:["Series","Сразу несколько файлов","Функцию","Список классов Python"], correct:0, explain:"Столбец DataFrame — это объект Series."},
+    {q:"Что делает команда import pandas as pd?", options:["Импортирует библиотеку pandas под коротким именем pd","Создаёт DataFrame","Считывает CSV","Сортирует таблицу"], correct:0, explain:"Это стандартный импорт библиотеки."},
+    {q:"Какой способ создания DataFrame показан в занятии?", options:["Через словарь списков","Только через NumPy","Только через Excel","Только через SQL"], correct:0, explain:"В ноутбуке DataFrame создаётся из словаря."},
+    {q:"Что находится слева в Series?", options:["Индекс","Тип данных","Имя файла","Статистика"], correct:0, explain:"Series показывает индекс слева и значение справа."},
+    {q:"Какой объект больше похож на полноценную таблицу?", options:["DataFrame","Series","bool mask","iloc"], correct:0, explain:"DataFrame — табличная структура."}
+  ];
+
+  const bank_view = [
+    {q:"Что делает df.head()?", options:["Показывает первые строки таблицы","Удаляет первые строки","Считает пропуски","Меняет индексы"], correct:0, explain:"head() показывает начало таблицы."},
+    {q:"Что возвращает df.shape?", options:["Размер таблицы: число строк и столбцов","Только число строк","Только число столбцов","Список названий столбцов"], correct:0, explain:"shape — это кортеж вида (строки, столбцы)."},
+    {q:"Для чего нужен df.info()?", options:["Посмотреть общую информацию и типы столбцов","Отсортировать таблицу","Показать только первые 5 строк","Создать Series"], correct:0, explain:"info() показывает количество non-null и типы столбцов."},
+    {q:"Что обычно показывает df.describe()?", options:["Сводную статистику по числовым столбцам","Названия столбцов","Все пропуски","Только индексы"], correct:0, explain:"describe() по умолчанию работает по числовым данным."},
+    {q:"Как получить описание категориальных столбцов?", options:["df.describe(include='object')","df.head(object)","df.info(object=True)","df.shape('object')"], correct:0, explain:"Такой вызов показан в материале."},
+    {q:"Как прочитать CSV в pandas?", options:["pd.read_csv('file.csv')","pd.open_csv('file.csv')","df.read('file.csv')","csv.to_pandas('file.csv')"], correct:0, explain:"Стандартный способ — pd.read_csv(...)."},
+    {q:"Что делает value_counts()?", options:["Считает частоты значений в столбце","Переименовывает столбец","Сортирует индексы","Считает только пропуски"], correct:0, explain:"Метод полезен для анализа категорий."},
+    {q:"Что означает shape = (10000, 14)?", options:["10000 строк и 14 столбцов","10000 столбцов и 14 строк","10000 пропусков и 14 типов","14 файлов по 10000 строк"], correct:0, explain:"Сначала всегда строки, потом столбцы."}
+  ];
+
+  const bank_filter = [
+    {q:"Что такое булева маска в pandas?", options:["Набор True/False для отбора строк","Способ сортировки по алфавиту","Отдельный тип DataFrame","Индекс по позициям"], correct:0, explain:"Булева маска используется для фильтрации."},
+    {q:"Как выбрать только строки, где Gender == 'Male'?", options:["df[df['Gender'] == 'Male']","df['Gender' = 'Male']","df.loc('Male')","df.filter('Male')"], correct:0, explain:"Сначала условие, потом передаём его в df[...] ."},
+    {q:"Какой оператор используется для логического И в pandas-условиях?", options:["&","and","&&","*"], correct:0, explain:"В pandas для поэлементного И используют &."},
+    {q:"Какой оператор используется для логического ИЛИ?", options:["|","or","||","+"], correct:0, explain:"Для поэлементного ИЛИ используют |."},
+    {q:"Какой оператор инвертирует булеву маску?", options:["~","!","not","-"], correct:0, explain:"Оператор ~ меняет True на False и наоборот."},
+    {q:"Для чего нужен isin([...])?", options:["Проверяет, входит ли значение в набор","Сортирует строки по списку","Удаляет дубликаты","Показывает индексы"], correct:0, explain:"isin удобно использовать в условиях фильтрации."},
+    {q:"Что важно при составлении сложных условий в pandas?", options:["Брать каждое условие в круглые скобки","Всегда использовать iloc","Сначала сортировать таблицу","Переименовать все столбцы"], correct:0, explain:"Скобки помогают избежать ошибок при комбинировании условий."},
+    {q:"Как исключить строки, где Geography == 'Spain'?", options:["df[df['Geography'] != 'Spain']","df[df['Geography'] = 'Spain']","df[~'Spain']","df.drop('Spain')"], correct:0, explain:"Это один из вариантов отрицания условия."}
+  ];
+
+  const bank_index = [
+    {q:"Чем loc отличается от iloc?", options:["loc — по меткам, iloc — по позициям","loc — по позициям, iloc — по меткам","Разницы нет","iloc только для сортировки"], correct:0, explain:"Это главное различие между ними."},
+    {q:"Что делает df_small.loc[1]?", options:["Берёт строку с индексом 1","Берёт первую строку по позиции","Берёт столбец номер 1","Сортирует по индексу"], correct:0, explain:"loc работает с именем индекса."},
+    {q:"Что делает df_small.iloc[0]?", options:["Берёт первую строку по позиции","Берёт строку с индексом 0 обязательно","Берёт столбец с именем 0","Показывает типы столбцов"], correct:0, explain:"iloc ориентируется на порядок, а не на имя индекса."},
+    {q:"Какой тип ошибки возможен у loc при несуществующей метке?", options:["KeyError","IndexError","TypeError","ValueError"], correct:0, explain:"В материале для loc указан KeyError."},
+    {q:"Какой тип ошибки возможен у iloc при выходе за границы?", options:["IndexError","KeyError","ImportError","NameError"], correct:0, explain:"iloc работает как индексация по позиции."},
+    {q:"Как выбрать строки с индексами 1, 4, 5 и столбцы Gender, Age?", options:["df_small.loc[[1, 4, 5], ['Gender', 'Age']]","df_small.iloc[[1, 4, 5], ['Gender', 'Age']]","df_small.loc[1:5, 0:2]","df_small['Gender', 'Age'][1,4,5]"], correct:0, explain:"И метки строк, и имена столбцов — это loc."},
+    {q:"Как выбрать первую строку и столбцы по позициям 0 и 2?", options:["df_small.iloc[0, [0, 2]]","df_small.loc[0, [0, 2]]","df_small.iloc[[0, 2], 0]","df_small.loc[[0, 2], 0]"], correct:0, explain:"Тут всё задаётся позициями, значит нужен iloc."},
+    {q:"Что использовать, если индексы в таблице равны 1, 4, 5, а нужна первая строка по порядку?", options:["iloc","loc","value_counts","sort_values"], correct:0, explain:"Порядок строк — это iloc."}
+  ];
+
+  const bank_sort = [
+    {q:"Как отсортировать df по Age по возрастанию?", options:["df.sort_values('Age')","df.sort('Age')","df.order_by('Age')","df['Age'].sort_df()"], correct:0, explain:"В pandas для этого используют sort_values."},
+    {q:"Как отсортировать по Age по убыванию?", options:["df.sort_values('Age', ascending=False)","df.sort_values('Age', reverse=True)","df.sort_desc('Age')","df.sort_values(False, 'Age')"], correct:0, explain:"Для убывания задают ascending=False."},
+    {q:"Можно ли сортировать сразу по двум столбцам?", options:["Да","Нет","Только если столбцы строковые","Только после head()"], correct:0, explain:"В материале есть пример сортировки по Age и Tenure."},
+    {q:"Что означает ascending=[True, False] в sort_values(['Age', 'Tenure'], ...)?", options:["Age по возрастанию, Tenure по убыванию","Оба столбца по возрастанию","Age по убыванию, Tenure по возрастанию","Сортировка отключена"], correct:0, explain:"Порядок списка соответствует порядку столбцов."},
+    {q:"Как называется метод сортировки таблицы по столбцу?", options:["sort_values","sort_index","describe","mask"], correct:0, explain:"Именно этот метод использован в ноутбуке."},
+    {q:"Что сначала сравнивается при сортировке по ['Age', 'Tenure']?", options:["Age","Tenure","Оба сразу","Индекс"], correct:0, explain:"Сначала применяется первый столбец из списка."},
+    {q:"Что произойдёт, если значения Age совпадают?", options:["Будет использоваться следующий столбец сортировки","Сортировка остановится","Все строки удалятся","iloc автоматически переиндексирует данные"], correct:0, explain:"Тогда сработает второй ключ сортировки."},
+    {q:"Что лучше описывает sort_values?", options:["Возвращает таблицу, упорядоченную по значениям столбца","Считает число уникальных значений","Показывает первые строки","Берёт строку по индексу"], correct:0, explain:"Метод отвечает именно за порядок строк."}
+  ];
+
+  const bank_mix = [
+    {q:"Что верно: df.shape для таблицы с 5 строками и 3 столбцами?", options:["(5, 3)","(3, 5)","[5, 3] обязательно","только 5"], correct:0, explain:"Сначала строки, потом столбцы."},
+    {q:"Что лучше использовать для просмотра первых строк после чтения CSV?", options:["head()","iloc","sort_values()","describe(include='object')"], correct:0, explain:"Чаще всего первым смотрят именно head()."},
+    {q:"Какой вариант означает «мужчины И число продуктов не меньше 3»?", options:["(df['Gender'] == 'Male') & (df['NumOfProducts'] >= 3)","(df['Gender'] == 'Male') | (df['NumOfProducts'] >= 3)","df['Gender'] == 'Male' and 3","~(df['Gender'] == 'Male')"], correct:0, explain:"Здесь нужны одновременно оба условия."},
+    {q:"Что выбрать, если нужно обратиться к строке по её реальному индексу?", options:["loc","iloc","shape","head"], correct:0, explain:"Метки строк — зона ответственности loc."},
+    {q:"Что выбрать, если нужна строка по порядковому номеру?", options:["iloc","loc","describe","read_csv"], correct:0, explain:"Позиции строк — это iloc."},
+    {q:"Какой метод поможет быстро понять типы столбцов?", options:["info()","sort_values()","isin()","shape"], correct:0, explain:"info() показывает типы и общую сводку."},
+    {q:"Какой код исключает France и Germany?", options:["df[~(df['Geography'].isin(['France', 'Germany']))]","df[df['Geography'].isin(['France', 'Germany'])]","df.drop(['France', 'Germany'])","df.sort_values(['France', 'Germany'])"], correct:0, explain:"Нужны isin и отрицание через ~."},
+    {q:"Что верно про ответы в этом тесте?", options:["Правильный вариант перемешивается","Всегда правильный ответ A","Всегда правильный ответ C","Правильных ответов нет"], correct:0, explain:"В этой версии и вопросы, и позиции правильных ответов специально перемешиваются."}
+  ];
+
+  const m = { q_basic: bank_basic, q_view: bank_view, q_filter: bank_filter, q_index: bank_index, q_sort: bank_sort, q_mix: bank_mix };
+  let currentBank = bank_basic;
+  let shuffledBank = [];
+  let idx = 0;
+  let scoreOk = 0;
+  let scoreTotal = 0;
+
+  function shuffleArray(arr){
+    const out = arr.slice();
+    for(let i = out.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
+  function buildShuffledBank(bank){
+    const targetPositions = shuffleArray([0, 1, 2, 3]);
+    const questions = shuffleArray(bank.slice());
+
+    return questions.map((item, idx) => {
+      const correctOption = item.options[item.correct];
+      const wrongOptions = item.options.filter((_, i) => i !== item.correct);
+      const shuffledWrong = shuffleArray(wrongOptions);
+      const targetCorrect = targetPositions[idx % targetPositions.length];
+      const options = [];
+      let wrongPtr = 0;
+
+      for(let pos = 0; pos < item.options.length; pos++){
+        if(pos === targetCorrect){
+          options.push(correctOption);
+        } else {
+          options.push(shuffledWrong[wrongPtr]);
+          wrongPtr += 1;
+        }
+      }
+
+      return {
+        q:item.q,
+        options,
+        correct: targetCorrect,
+        explain:item.explain
+      };
+    });
+  }
+
+  function setQuizBank(which){
+    currentBank = m[which] || bank_basic;
+    shuffledBank = buildShuffledBank(currentBank);
+    idx = 0; scoreOk = 0; scoreTotal = 0;
+    renderQuiz();
+  }
+
+  document.querySelectorAll('#quiz .subtab').forEach(st => {
+    st.addEventListener('click', () => {
+      document.querySelectorAll('#quiz .subtab').forEach(x => x.classList.remove('active'));
+      st.classList.add('active');
+      setQuizBank(st.dataset.sub);
+    });
+  });
+
+  function renderQuiz(){
+    const item = shuffledBank[idx];
+    const box = document.getElementById('quizBox');
+    box.innerHTML = `
+      <div class="muted">Вопрос ${idx + 1} из ${shuffledBank.length}</div>
+      <pre><code>${item.q}</code></pre>
+      <div style="margin-top:10px;">
+        ${item.options.map((opt, i) => `
+          <label style="font-weight:400; display:block; margin:6px 0;">
+            <input type="radio" name="quiz" value="${i}" style="width:auto; margin-right:8px;">
+            ${opt}
+          </label>
+        `).join('')}
+      </div>
+    `;
+    document.getElementById('feedback').innerHTML = '';
+    document.getElementById('score').textContent = `${scoreOk}/${scoreTotal}`;
+  }
+
+  function getSelected(){
+    const el = document.querySelector('input[name="quiz"]:checked');
+    return el ? Number(el.value) : null;
+  }
+
+  document.getElementById('btnCheck').addEventListener('click', () => {
+    const sel = getSelected();
+    const item = shuffledBank[idx];
+    if (sel === null){
+      document.getElementById('feedback').innerHTML = '<span class="bad">Выберите вариант.</span>';
+      return;
+    }
+    scoreTotal += 1;
+    if (sel === item.correct){
+      scoreOk += 1;
+      document.getElementById('feedback').innerHTML = `<div class="ok">Верно.</div><div class="muted">${item.explain}</div>`;
+    } else {
+      document.getElementById('feedback').innerHTML = `<div class="bad">Неверно.</div><div class="muted">${item.explain}</div>`;
+    }
+    document.getElementById('score').textContent = `${scoreOk}/${scoreTotal}`;
+  });
+
+  document.getElementById('btnNext').addEventListener('click', () => {
+    idx = (idx + 1) % shuffledBank.length;
+    renderQuiz();
+  });
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    shuffledBank = buildShuffledBank(currentBank);
+    idx = 0; scoreOk = 0; scoreTotal = 0;
+    renderQuiz();
+  });
+
+  setQuizBank('q_basic');
+</script>
+</body>
+</html>

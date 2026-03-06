@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 4.2 — Pandas: модификация таблиц и группировки</title>
+  <style>
+    :root{
+      --bg:#fafafa; --text:#222; --muted:#666; --line:#ddd; --soft:#f7f7f7;
+      --note:#fff7e6; --note-line:#ffe2a8; --ok:#0a7; --bad:#c33; --accent:#111;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Arial, Helvetica, sans-serif}
+    .wrap{max-width:1120px;margin:0 auto;padding:24px}
+    h1,h2,h3{margin:0 0 10px}
+    h1{font-size:30px}
+    h2{font-size:24px}
+    h3{font-size:18px}
+    .muted{color:var(--muted)}
+    .tabs,.subtabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+    .tab,.subtab{
+      border:1px solid var(--line); border-radius:999px; padding:8px 14px; cursor:pointer;
+      background:white; user-select:none;
+    }
+    .tab.active,.subtab.active{background:var(--accent);color:white;border-color:var(--accent)}
+    .card{border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;background:white}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    @media (max-width:920px){.row,.grid3{grid-template-columns:1fr}}
+    label{display:block;font-weight:600;margin:8px 0 6px}
+    input,select,button,textarea{
+      width:100%; padding:10px; border-radius:10px; border:1px solid #ccc; font-size:14px;
+      background:white;
+    }
+    button{cursor:pointer}
+    button.secondary{background:#fff}
+    pre{background:var(--soft);padding:10px;border-radius:12px;overflow:auto;white-space:pre-wrap}
+    code{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;background:#fff}
+    .ok{color:var(--ok);font-weight:700}
+    .bad{color:var(--bad);font-weight:700}
+    .note{background:var(--note);border:1px solid var(--note-line);padding:10px;border-radius:12px}
+    .small{font-size:12px}
+    table{border-collapse:collapse;width:100%;margin-top:10px}
+    th,td{border:1px solid var(--line);padding:8px;text-align:left}
+    th{background:var(--soft)}
+    .panel{display:block}
+    .subpanel{display:block}
+    .center{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .stat{padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lesson 4.2 — Pandas: модификация таблиц и группировки</h1>
+  <div class="muted">Формат как раньше: теория → “потрогать руками” → самопроверка. Темы: создание и изменение столбцов, модификация строк через apply/lambda, merge/join, agg, groupby, pivot_table, crosstab.</div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="theory">Теория</div>
+    <div class="tab" data-tab="play">Поиграть</div>
+    <div class="tab" data-tab="quiz">Самопроверка</div>
+  </div>
+
+  <section id="theory" class="panel">
+    <div class="card">
+      <h2>Темы занятия</h2>
+      <div class="note"><b>Цель:</b> научиться менять таблицы в pandas и получать сводную информацию: добавлять и удалять признаки, объединять таблицы, агрегировать данные и строить группировки.</div>
+      <div class="subtabs">
+        <div class="subtab active" data-sub="t_create">Создание и изменение</div>
+        <div class="subtab" data-sub="t_strings">Строки и lambda</div>
+        <div class="subtab" data-sub="t_merge">merge / join</div>
+        <div class="subtab" data-sub="t_agg">agg</div>
+        <div class="subtab" data-sub="t_groupby">groupby</div>
+        <div class="subtab" data-sub="t_pivot">pivot_table</div>
+        <div class="subtab" data-sub="t_cross">crosstab</div>
+      </div>
+    </div>
+
+    <div id="t_create" class="subpanel">
+      <div class="card">
+        <h2>Создание, удаление и изменение столбцов</h2>
+        <ul>
+          <li>Новый столбец можно создать присваиванием: <code>df['new_col'] = ...</code>.</li>
+          <li>Векторные операции обычно быстрее цикла <code>for</code> с <code>iterrows()</code>.</li>
+          <li>Для изменения части строк лучше использовать <code>loc</code>.</li>
+          <li><code>replace</code> удобно для замены значений по словарю.</li>
+        </ul>
+<pre><code>users['Age_days'] = users['Age'] * 365
+users = users.drop(columns='new_feature')
+users.loc[users['Geography'] == 'France', 'target'] = 1
+users['Gender'] = users['Gender'].replace({'Female':'F', 'Male':'M'})</code></pre>
+        <div class="note">Важно: запись вида <code>df[df['cond']]['col'] = ...</code> опасна. Для изменения исходной таблицы используйте <code>loc</code>.</div>
+      </div>
+    </div>
+
+    <div id="t_strings" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Модификация строк: apply, lambda и строковые методы</h2>
+        <ul>
+          <li>Если в столбце лежат строки, их можно менять поэлементно через <code>apply</code>.</li>
+          <li><code>lambda</code> удобно использовать для коротких правил преобразования.</li>
+          <li>Частые операции: <code>replace</code>, <code>split</code>, <code>strip</code>, <code>lower</code>, срезы строк.</li>
+          <li>Так можно убрать часть слова, взять фрагмент до символа-разделителя или получить логин из email.</li>
+        </ul>
+<pre><code>df['name_short'] = df['name'].apply(lambda x: x.replace('ООО ', ''))
+df['code_left'] = df['code'].apply(lambda x: x.split('-')[0])
+df['login'] = df['email'].apply(lambda x: x.split('@')[0])</code></pre>
+        <div class="note">На вход лямбде приходит одна строка, на выходе — новая строка. Так создают или изменяют текстовые признаки.</div>
+      </div>
+    </div>
+
+    <div id="t_merge" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Объединение таблиц: merge и join</h2>
+        <ul>
+          <li><code>merge</code> — основной способ соединить таблицы по общему ключу.</li>
+          <li><code>left</code> сохраняет все строки левой таблицы.</li>
+          <li><code>right</code> сохраняет все строки правой таблицы.</li>
+          <li><code>inner</code> оставляет только совпавшие ключи.</li>
+          <li><code>outer</code> сохраняет все ключи из обеих таблиц.</li>
+        </ul>
+<pre><code>merged = users.merge(bank, on='CustomerId', how='outer')
+users_id = users.set_index('CustomerId')
+bank_id = bank.set_index('CustomerId')
+result = bank_id.join(users_id).reset_index()</code></pre>
+      </div>
+    </div>
+
+    <div id="t_agg" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Агрегация через agg</h2>
+        <ul>
+          <li><code>agg</code> сводит много значений к нескольким итогам: минимум, максимум, среднее и т.д.</li>
+          <li>Можно агрегировать один столбец или сразу несколько.</li>
+          <li>Можно задавать собственные имена итоговым метрикам.</li>
+        </ul>
+<pre><code>users['Age'].agg(['min', 'max'])
+users.agg({
+    'Age': ['min', 'max'],
+    'EstimatedSalary': 'mean'
+})
+users.agg(
+    min_age=('Age', 'min'),
+    max_age=('Age', 'max'),
+    mean_salary=('EstimatedSalary', 'mean')
+)</code></pre>
+      </div>
+    </div>
+
+    <div id="t_groupby" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Группировки: groupby</h2>
+        <ul>
+          <li><code>groupby</code> разбивает строки на группы по значению столбца.</li>
+          <li>После этого обычно применяют <code>agg</code>, <code>sum</code>, <code>mean</code>, <code>count</code>.</li>
+          <li>Это способ ответить на вопросы вида “что происходит по странам / клиентам / категориям?”.</li>
+        </ul>
+<pre><code>grouped = toy_df.groupby('client_id')
+grouped.agg({'price': ['sum', 'min', 'max']})
+users.groupby('Geography').agg({'Age': ['mean'], 'EstimatedSalary': ['min']})</code></pre>
+      </div>
+    </div>
+
+    <div id="t_pivot" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Сводные таблицы: pivot_table</h2>
+        <ul>
+          <li><code>pivot_table</code> группирует данные и раскладывает одну категорию в строки, другую — в столбцы.</li>
+          <li>Подходит для компактных сводок по категориям.</li>
+          <li>Параметр <code>margins=True</code> добавляет итоги.</li>
+        </ul>
+<pre><code>pivot = pd.pivot_table(df,
+    values='Sales',
+    index='Product',
+    columns='Region',
+    aggfunc='sum')
+
+users.pivot_table(index='Geography',
+                  columns='Gender',
+                  values='EstimatedSalary',
+                  aggfunc='mean',
+                  margins=True)</code></pre>
+      </div>
+    </div>
+
+    <div id="t_cross" class="subpanel" style="display:none;">
+      <div class="card">
+        <h2>Перекрёстные таблицы: crosstab</h2>
+        <ul>
+          <li><code>crosstab</code> показывает частоты сочетаний категорий.</li>
+          <li>Можно считать не только количество, но и агрегаты по <code>values</code> + <code>aggfunc</code>.</li>
+          <li><code>normalize</code> переводит частоты в доли.</li>
+        </ul>
+<pre><code>pd.crosstab(index=users['Geography'], columns=users['Gender'])
+
+pd.crosstab(index=users['Geography'],
+            columns=users['Gender'],
+            normalize='index')</code></pre>
+        <div class="note">Если нужен именно подсчёт сочетаний категорий, <code>crosstab</code> часто читается проще, чем ручной <code>groupby</code>.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="play" class="panel" style="display:none;">
+    <div class="card">
+      <h2>Поиграть</h2>
+      <div class="muted">Это не Python-исполнитель. Здесь мы “проигрываем” типичные операции из занятия на маленьких примерах.</div>
+      <div class="subtabs">
+        <div class="subtab active" data-sub="p_create">Изменение столбцов</div>
+        <div class="subtab" data-sub="p_strings">Строки и lambda</div>
+        <div class="subtab" data-sub="p_merge">merge</div>
+        <div class="subtab" data-sub="p_group">groupby / agg</div>
+        <div class="subtab" data-sub="p_pivot">pivot / crosstab</div>
+      </div>
+    </div>
+
+    <div id="p_create" class="subpanel">
+      <div class="row">
+        <div class="card">
+          <h3>1) Возраст в днях</h3>
+          <div class="muted">Есть возраст в годах. Посчитаем новый столбец.</div>
+          <label>Age</label>
+          <input id="ageInput" type="number" value="30" />
+          <button id="btnAge">Вычислить Age_days</button>
+          <div style="margin-top:12px"><b>Результат:</b> <span id="ageOut" class="pill">—</span></div>
+        </div>
+        <div class="card">
+          <h3>2) Меняем target через loc</h3>
+          <div class="muted">Если страна France, ставим target = 1, иначе 0.</div>
+          <label>Geography</label>
+          <select id="geoInput">
+            <option>France</option>
+            <option>Germany</option>
+            <option>Spain</option>
+          </select>
+          <button id="btnTarget">Применить правило</button>
+          <div style="margin-top:12px"><b>target:</b> <span id="targetOut" class="pill">—</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <h3>3) replace для пола</h3>
+          <label>Gender</label>
+          <select id="genderInput">
+            <option>Female</option>
+            <option>Male</option>
+          </select>
+          <button id="btnGender">Сократить</button>
+          <div style="margin-top:12px"><b>После replace:</b> <span id="genderOut" class="pill">—</span></div>
+        </div>
+        <div class="card">
+          <h3>4) Что быстрее по идее?</h3>
+          <div class="muted">Сравнение подходов для создания столбца:</div>
+          <button id="btnSpeed">Показать ответ</button>
+          <div id="speedOut" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_strings" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Убрать часть слова</h3>
+          <div class="muted">Имитация <code>apply(lambda x: x.replace(...))</code>.</div>
+          <label>Строка</label>
+          <input id="strReplaceInput" value="ООО Ромашка" />
+          <button id="btnStrReplace">Убрать префикс «ООО »</button>
+          <div style="margin-top:12px"><b>Результат:</b> <span id="strReplaceOut" class="pill">—</span></div>
+        </div>
+        <div class="card">
+          <h3>2) split по символу</h3>
+          <div class="muted">Берём часть строки до дефиса.</div>
+          <label>Код</label>
+          <input id="splitInput" value="RU-MOW-01" />
+          <button id="btnSplit">Взять часть до «-»</button>
+          <div style="margin-top:12px"><b>Результат:</b> <span id="splitOut" class="pill">—</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <h3>3) login из email</h3>
+          <div class="muted">Классический пример со <code>split('@')</code>.</div>
+          <label>Email</label>
+          <input id="emailInput" value="student01@itmo.ru" />
+          <button id="btnEmail">Получить login</button>
+          <div style="margin-top:12px"><b>login:</b> <span id="emailOut" class="pill">—</span></div>
+        </div>
+        <div class="card">
+          <h3>4) Какой lambda подойдёт?</h3>
+          <label>Нужно взять часть строки до символа <code>/</code></label>
+          <select id="lambdaSelect">
+            <option>lambda x: x.split('/')[0]</option>
+            <option>lambda x: x.merge('/')</option>
+            <option>lambda x: x.drop('/')</option>
+          </select>
+          <button id="btnLambdaSelect">Проверить</button>
+          <div id="lambdaSelectOut" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_merge" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Выбери тип merge</h3>
+          <div class="muted">Левая таблица: ключи [1,2,3], правая: [3,4].</div>
+          <label>Какой how нужен, чтобы сохранить все ключи левой таблицы?</label>
+          <select id="mergeHow">
+            <option>left</option>
+            <option>right</option>
+            <option>inner</option>
+            <option>outer</option>
+          </select>
+          <button id="btnMergeHow">Проверить</button>
+          <div id="mergeHowOut" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h3>2) Какие ключи останутся?</h3>
+          <label>Выберите how</label>
+          <select id="mergeTypeKeys">
+            <option>left</option>
+            <option>right</option>
+            <option>inner</option>
+            <option>outer</option>
+          </select>
+          <button id="btnMergeKeys">Показать ключи</button>
+          <div style="margin-top:12px"><b>Ключи результата:</b> <span id="mergeKeysOut" class="pill">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_group" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) Сумма покупок клиента</h3>
+          <div class="muted">Цены клиента: 68, 2099, 1089</div>
+          <button id="btnGroupSum">Посчитать sum</button>
+          <div style="margin-top:12px"><b>sum:</b> <span id="groupSumOut" class="pill">—</span></div>
+        </div>
+        <div class="card">
+          <h3>2) min / max</h3>
+          <div class="muted">Цены клиента: 68, 2099, 1089</div>
+          <button id="btnGroupMinMax">Посчитать</button>
+          <div id="groupMinMaxOut" style="margin-top:12px"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <h3>3) agg для одного столбца</h3>
+          <label>Какой набор функций применить к Age?</label>
+          <select id="aggSelect">
+            <option>min и max</option>
+            <option>left и right</option>
+            <option>merge и join</option>
+          </select>
+          <button id="btnAgg">Проверить</button>
+          <div id="aggOut" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h3>4) reset_index после groupby</h3>
+          <button id="btnResetIdx">Зачем это делают?</button>
+          <div id="resetIdxOut" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="p_pivot" class="subpanel" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h3>1) pivot_table</h3>
+          <div class="muted">Продажи A: North=100, South=200</div>
+          <button id="btnPivot">Показать строку для продукта A</button>
+          <div id="pivotOut" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h3>2) crosstab</h3>
+          <div class="muted">Что обычно считает crosstab без values?</div>
+          <button id="btnCross">Показать</button>
+          <div id="crossOut" style="margin-top:12px"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <h3>3) normalize='index'</h3>
+          <button id="btnNorm">Что это значит?</button>
+          <div id="normOut" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h3>4) Итоги в pivot_table</h3>
+          <button id="btnMargins">Для чего margins=True?</button>
+          <div id="marginsOut" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quiz" class="panel" style="display:none;">
+    <div class="card">
+      <h2>Самопроверка</h2>
+      <div class="muted">Вопросы и варианты перемешиваются. Правильный ответ не сидит на одной и той же букве.</div>
+      <div class="subtabs">
+        <div class="subtab active" data-sub="q_create">Изменение таблиц</div>
+        <div class="subtab" data-sub="q_strings">Строки и lambda</div>
+        <div class="subtab" data-sub="q_merge">merge / join</div>
+        <div class="subtab" data-sub="q_agg">agg / groupby</div>
+        <div class="subtab" data-sub="q_pivot">pivot / crosstab</div>
+        <div class="subtab" data-sub="q_mix">Смешанные</div>
+      </div>
+      <div class="center" style="margin:10px 0 4px">
+        <div class="stat">Счёт: <span id="score">0/0</span></div>
+        <div class="stat">Банк: <span id="bankName">Изменение таблиц</span></div>
+      </div>
+      <div id="quizBox" class="card"></div>
+      <div class="center">
+        <button id="btnCheck">Проверить</button>
+        <button id="btnNext" class="secondary">Следующий вопрос</button>
+        <button id="btnReset" class="secondary">Сбросить банк</button>
+      </div>
+      <div id="feedback" style="margin-top:12px"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function wireTabs(rootSel){
+    const root = document.querySelector(rootSel);
+    root.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        root.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.tab;
+        document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+        document.getElementById(target).style.display = 'block';
+      });
+    });
+  }
+  wireTabs('body');
+
+  function wireSubtabs(scope){
+    document.querySelectorAll(scope + ' .subtabs').forEach(box => {
+      const tabs = box.querySelectorAll('.subtab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const panels = Array.from(box.parentElement.parentElement.querySelectorAll('.subpanel'));
+          panels.forEach(p => p.style.display = 'none');
+          const el = document.getElementById(tab.dataset.sub);
+          if(el) el.style.display = 'block';
+        });
+      });
+    });
+  }
+  wireSubtabs('#theory');
+  wireSubtabs('#play');
+
+  // Play interactions
+  document.getElementById('btnAge').addEventListener('click', ()=>{
+    const age = Number(document.getElementById('ageInput').value || 0);
+    document.getElementById('ageOut').textContent = age * 365;
+  });
+  document.getElementById('btnTarget').addEventListener('click', ()=>{
+    const geo = document.getElementById('geoInput').value;
+    document.getElementById('targetOut').textContent = geo === 'France' ? '1' : '0';
+  });
+  document.getElementById('btnGender').addEventListener('click', ()=>{
+    const g = document.getElementById('genderInput').value;
+    document.getElementById('genderOut').textContent = g === 'Female' ? 'F' : 'M';
+  });
+  document.getElementById('btnSpeed').addEventListener('click', ()=>{
+    document.getElementById('speedOut').innerHTML = '<div class="ok">Обычно быстрее векторная операция или apply, чем ручной цикл с iterrows().</div><div class="muted">На занятии сравниваются именно такие подходы.</div>';
+  });
+  document.getElementById('btnStrReplace').addEventListener('click', ()=>{
+    const s = document.getElementById('strReplaceInput').value;
+    document.getElementById('strReplaceOut').textContent = s.replace('ООО ', '');
+  });
+  document.getElementById('btnSplit').addEventListener('click', ()=>{
+    const s = document.getElementById('splitInput').value;
+    document.getElementById('splitOut').textContent = s.split('-')[0] || '';
+  });
+  document.getElementById('btnEmail').addEventListener('click', ()=>{
+    const s = document.getElementById('emailInput').value;
+    document.getElementById('emailOut').textContent = s.split('@')[0] || '';
+  });
+  document.getElementById('btnLambdaSelect').addEventListener('click', ()=>{
+    const v = document.getElementById('lambdaSelect').value;
+    document.getElementById('lambdaSelectOut').innerHTML = v === "lambda x: x.split('/')[0]"
+      ? '<div class="ok">Верно: split разбивает строку, а [0] берёт часть до разделителя.</div>'
+      : '<div class="bad">Нет. Для строки здесь нужен split, а не merge или drop.</div>';
+  });
+  document.getElementById('btnMergeHow').addEventListener('click', ()=>{
+    const v = document.getElementById('mergeHow').value;
+    document.getElementById('mergeHowOut').innerHTML = v === 'left'
+      ? '<div class="ok">Верно: left сохраняет все ключи левой таблицы.</div>'
+      : '<div class="bad">Нет. Здесь нужен left.</div>';
+  });
+  document.getElementById('btnMergeKeys').addEventListener('click', ()=>{
+    const v = document.getElementById('mergeTypeKeys').value;
+    const m = {left:'[1, 2, 3]', right:'[3, 4]', inner:'[3]', outer:'[1, 2, 3, 4]'};
+    document.getElementById('mergeKeysOut').textContent = m[v];
+  });
+  document.getElementById('btnGroupSum').addEventListener('click', ()=>{
+    document.getElementById('groupSumOut').textContent = String(68 + 2099 + 1089);
+  });
+  document.getElementById('btnGroupMinMax').addEventListener('click', ()=>{
+    document.getElementById('groupMinMaxOut').innerHTML = '<div><b>min:</b> <span class="pill">68</span></div><div style="margin-top:8px"><b>max:</b> <span class="pill">2099</span></div>';
+  });
+  document.getElementById('btnAgg').addEventListener('click', ()=>{
+    const v = document.getElementById('aggSelect').value;
+    document.getElementById('aggOut').innerHTML = v === 'min и max'
+      ? '<div class="ok">Да. Это типичный пример agg для одного столбца.</div>'
+      : '<div class="bad">Нет. Для Age подходят min и max.</div>';
+  });
+  document.getElementById('btnResetIdx').addEventListener('click', ()=>{
+    document.getElementById('resetIdxOut').innerHTML = '<div class="ok">Чтобы вернуть индекс обратно в обычный столбец и получить более “плоскую” таблицу.</div>';
+  });
+  document.getElementById('btnPivot').addEventListener('click', ()=>{
+    document.getElementById('pivotOut').innerHTML = '<table><tr><th>Product</th><th>North</th><th>South</th></tr><tr><td>A</td><td>100</td><td>200</td></tr></table>';
+  });
+  document.getElementById('btnCross').addEventListener('click', ()=>{
+    document.getElementById('crossOut').innerHTML = '<div class="ok">Обычно количество наблюдений для каждой комбинации категорий.</div>';
+  });
+  document.getElementById('btnNorm').addEventListener('click', ()=>{
+    document.getElementById('normOut').innerHTML = '<div class="ok">Доли считаются по строкам: каждая строка суммируется примерно к 1.</div>';
+  });
+  document.getElementById('btnMargins').addEventListener('click', ()=>{
+    document.getElementById('marginsOut').innerHTML = '<div class="ok">Добавляются общие итоги по строкам и/или столбцам.</div>';
+  });
+
+  // Quiz banks
+  const bank_create = [
+    {q:"Как корректнее изменить target только для строк с Geography == 'France'?", options:["users.loc[users['Geography']=='France', 'target'] = 1","users['target'] = 1","users[users['Geography']=='France']['target'] = 1","users.target('France') = 1"], correct:0, explain:"Для изменения части таблицы безопаснее использовать loc."},
+    {q:"Что делает код users['Age_days'] = users['Age'] * 365?", options:["Создаёт новый столбец поэлементно","Удаляет столбец Age","Группирует таблицу","Соединяет две таблицы"], correct:0, explain:"Это обычное создание нового признака на основе существующего."},
+    {q:"Что удобнее использовать для замены Female→F и Male→M?", options:["replace({'Female':'F','Male':'M'})","merge","join","drop"], correct:0, explain:"replace по словарю — прямой способ заменить значения."},
+    {q:"Какой подход обычно быстрее для простых арифметических операций по столбцу?", options:["Векторная операция по столбцу","Цикл for + iterrows()","Ручной список с print","join по индексу"], correct:0, explain:"В pandas обычно выгоднее использовать векторные операции."},
+    {q:"Что делает drop(columns='new_feature')?", options:["Удаляет столбец","Переименовывает столбец","Добавляет столбец","Сортирует строки"], correct:0, explain:"drop(columns=...) удаляет указанные столбцы."},
+    {q:"Зачем может понадобиться inplace=True?", options:["Чтобы изменить текущий DataFrame без нового присваивания","Чтобы ускорить merge","Чтобы автоматически сгруппировать данные","Чтобы перевести столбец в индекс"], correct:0, explain:"Смысл в изменении объекта на месте."}
+  ];
+
+  const bank_strings = [
+    {q:"Что делает выражение df['email'].apply(lambda x: x.split('@')[0])?", options:["Берёт логин до символа @","Удаляет весь столбец email","Объединяет email с другой таблицей","Считает количество символов во всех строках сразу"], correct:0, explain:"split('@')[0] возвращает часть строки до символа @."},
+    {q:"Какой код логичнее всего убирает префикс 'ООО ' из строкового столбца name?", options:["df['name'].apply(lambda x: x.replace('ООО ', ''))","df['name'].merge('ООО ')","df['name'].groupby('ООО ')","df['name'].drop('ООО ')"], correct:0, explain:"Для поэлементной замены строк подходит apply + replace."},
+    {q:"Что вернёт lambda x: x.split('-')[0] для строки 'RU-MOW-01'?", options:["RU","MOW","01","RU-MOW"], correct:0, explain:"После split('-') первая часть находится по индексу 0."},
+    {q:"Когда удобно использовать lambda в pandas?", options:["Когда нужно короткое правило преобразования одного значения","Только для merge нескольких таблиц","Только для построения pivot_table","Только вместо loc"], correct:0, explain:"Lambda удобна для компактных функций преобразования элементов."},
+    {q:"Какой результат даст df['code'].apply(lambda x: x.split('/')[0]) для значения 'A12/B7'?", options:["A12","B7","['A12', 'B7']","A12/B7"], correct:0, explain:"split('/') делит строку по /, а [0] берёт левую часть."},
+    {q:"Что ближе всего по смыслу к модификации строк в столбце pandas?", options:["apply/lambda или строковые методы","outer merge","crosstab normalize='index'","reset_index после groupby"], correct:0, explain:"Это тема поэлементного преобразования текстовых значений."}
+  ];
+
+  const bank_merge = [
+    {q:"Какой how оставляет только совпавшие ключи из обеих таблиц?", options:["inner","left","outer","right"], correct:0, explain:"inner — пересечение ключей."},
+    {q:"Какой how сохранит все ключи из обеих таблиц?", options:["outer","inner","left","right"], correct:0, explain:"outer — объединение всех ключей."},
+    {q:"Для чего перед join часто делают set_index('CustomerId')?", options:["Чтобы соединять по индексу","Чтобы удалить дубликаты","Чтобы заменить merge на agg","Чтобы отсортировать столбцы"], correct:0, explain:"join по умолчанию работает по индексу."},
+    {q:"Левая таблица имеет ключи [1,2,3], правая [3,4]. Что даст inner merge?", options:["Только ключ 3","Ключи 1,2,3","Ключи 3,4","Ключи 1,2,3,4"], correct:0, explain:"Внутреннее объединение оставляет только общие ключи."},
+    {q:"Что чаще всего появляется после outer merge, если не все ключи совпали?", options:["NaN в части столбцов","Удаление всех пропусков","Автоматическая агрегация","Сжатие таблицы в одну строку"], correct:0, explain:"Для несовпавших ключей часть данных отсутствует, поэтому появляются NaN."},
+    {q:"Какой метод ближе всего по смыслу к SQL JOIN по ключу?", options:["merge","replace","agg","sample"], correct:0, explain:"Именно merge обычно сравнивают с SQL JOIN."}
+  ];
+
+  const bank_agg = [
+    {q:"Что делает users['Age'].agg(['min', 'max'])?", options:["Считает минимум и максимум по Age","Удаляет пропуски в Age","Строит сводную таблицу","Считает только среднее"], correct:0, explain:"agg собирает указанные агрегаты."},
+    {q:"Что возвращает groupby('client_id')?", options:["Объект группировки, к которому потом применяют агрегаты","Сразу готовую сводную таблицу","Один столбец client_id","Список уникальных client_id"], correct:0, explain:"Это промежуточный объект группировки."},
+    {q:"Для чего часто вызывают reset_index() после groupby(...).agg(...)?", options:["Чтобы индекс снова стал обычным столбцом","Чтобы удалить все пропуски","Чтобы выполнить merge","Чтобы изменить тип данных"], correct:0, explain:"После группировки ключ часто становится индексом."},
+    {q:"Какой код логичнее для суммы, минимума и максимума price по client_id?", options:["toy_df.groupby('client_id').agg({'price':['sum','min','max']})","toy_df.merge('client_id').sum()","toy_df.drop('price').groupby()","toy_df['price'].replace(['sum','min','max'])"], correct:0, explain:"Это прямой способ сделать несколько агрегатов по группам."},
+    {q:"Что делает users.groupby('Geography')?", options:["Разбивает строки на группы по стране","Сортирует страны по алфавиту и больше ничего","Удаляет Geography","Соединяет users с другой таблицей"], correct:0, explain:"groupby формирует группы по уникальным значениям Geography."},
+    {q:"Какое утверждение верно про agg?", options:["Можно задать разные функции для разных столбцов","agg работает только с одним столбцом","agg нужен только после pivot_table","agg удаляет индекс"], correct:0, explain:"Через словарь можно задавать агрегаты для разных столбцов."}
+  ];
+
+  const bank_pivot = [
+    {q:"Что удобнее использовать для таблицы вида 'строки = Product, столбцы = Region, значения = sum(Sales)'?", options:["pivot_table","drop","replace","sample"], correct:0, explain:"Это классический случай для pivot_table."},
+    {q:"Что обычно показывает crosstab без values и aggfunc?", options:["Частоты сочетаний категорий","Средние значения по числам","Только уникальные строки","Случайную выборку"], correct:0, explain:"По умолчанию crosstab считает количества."},
+    {q:"Что делает normalize='index' в crosstab?", options:["Нормирует значения внутри каждой строки","Нормирует только столбцы","Удаляет пропуски","Переводит таблицу в long format"], correct:0, explain:"Суммы по строкам становятся равны 1 (или около того)."},
+    {q:"Для чего margins=True в pivot_table?", options:["Добавляет общие итоги","Удаляет индексы","Оставляет только строки без NaN","Преобразует таблицу в crosstab"], correct:0, explain:"margins добавляет строку/столбец итогов."},
+    {q:"Что ближе всего к перекрёстной таблице по двум категориальным признакам?", options:["crosstab","iterrows","replace","join"], correct:0, explain:"crosstab специально для таких случаев."},
+    {q:"Какой аргумент в pivot_table отвечает за агрегируемый числовой столбец?", options:["values","columns","index","how"], correct:0, explain:"values — это столбец с числами, по которому считаются агрегаты."}
+  ];
+
+  const bank_mix = bank_create.concat(bank_strings, bank_merge, bank_agg, bank_pivot);
+
+  function prepareBank(bank){
+    return shuffle(bank).map(item => {
+      const opts = item.options.map((text, idx) => ({text, isCorrect: idx === item.correct}));
+      const shuffled = shuffle(opts);
+      return {
+        q: item.q,
+        options: shuffled.map(x => x.text),
+        correct: shuffled.findIndex(x => x.isCorrect),
+        explain: item.explain
+      };
+    });
+  }
+
+  const bankNames = {
+    q_create:'Изменение таблиц',
+    q_strings:'Строки и lambda',
+    q_merge:'merge / join',
+    q_agg:'agg / groupby',
+    q_pivot:'pivot / crosstab',
+    q_mix:'Смешанные'
+  };
+  const rawBanks = { q_create:bank_create, q_strings:bank_strings, q_merge:bank_merge, q_agg:bank_agg, q_pivot:bank_pivot, q_mix:bank_mix };
+  let currentKey = 'q_create';
+  let currentBank = prepareBank(rawBanks[currentKey]);
+  let idx = 0;
+  let scoreOk = 0;
+  let scoreTotal = 0;
+
+  document.querySelectorAll('#quiz .subtab').forEach(st => {
+    st.addEventListener('click', () => {
+      document.querySelectorAll('#quiz .subtab').forEach(x => x.classList.remove('active'));
+      st.classList.add('active');
+      currentKey = st.dataset.sub;
+      currentBank = prepareBank(rawBanks[currentKey]);
+      idx = 0; scoreOk = 0; scoreTotal = 0;
+      renderQuiz();
+    });
+  });
+
+  function renderQuiz(){
+    const item = currentBank[idx];
+    document.getElementById('bankName').textContent = bankNames[currentKey];
+    document.getElementById('score').textContent = `${scoreOk}/${scoreTotal}`;
+    document.getElementById('quizBox').innerHTML = `
+      <div class="muted">Вопрос ${idx+1} из ${currentBank.length}</div>
+      <pre><code>${item.q}</code></pre>
+      <div style="margin-top:10px;">
+        ${item.options.map((opt,i)=>`
+          <label style="font-weight:400; display:block; margin:6px 0;">
+            <input type="radio" name="quiz" value="${i}" style="width:auto; margin-right:8px;"> ${opt}
+          </label>`).join('')}
+      </div>`;
+    document.getElementById('feedback').innerHTML = '';
+  }
+
+  function getSelected(){
+    const el = document.querySelector('input[name="quiz"]:checked');
+    return el ? Number(el.value) : null;
+  }
+
+  document.getElementById('btnCheck').addEventListener('click', ()=>{
+    const sel = getSelected();
+    const item = currentBank[idx];
+    if(sel === null){
+      document.getElementById('feedback').innerHTML = '<span class="bad">Выберите вариант.</span>';
+      return;
+    }
+    scoreTotal += 1;
+    if(sel === item.correct){
+      scoreOk += 1;
+      document.getElementById('feedback').innerHTML = `<div class="ok">Верно.</div><div class="muted">${item.explain}</div>`;
+    } else {
+      document.getElementById('feedback').innerHTML = `<div class="bad">Неверно.</div><div class="muted">${item.explain}</div>`;
+    }
+    document.getElementById('score').textContent = `${scoreOk}/${scoreTotal}`;
+  });
+
+  document.getElementById('btnNext').addEventListener('click', ()=>{
+    idx = (idx + 1) % currentBank.length;
+    renderQuiz();
+  });
+
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    currentBank = prepareBank(rawBanks[currentKey]);
+    idx = 0; scoreOk = 0; scoreTotal = 0;
+    renderQuiz();
+  });
+
+  renderQuiz();
+</script>
+</body>
+</html>
